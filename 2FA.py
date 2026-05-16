@@ -14,25 +14,6 @@ body = 'Your Code: '
 sender = 'oridostore1@gmail.com'
 recipient = [sender]
 
-def send_mail(subject, body, sender, recipient, password):
-    """
-    sends the mail 'manually', not in use
-    :param subject:
-    :param body:
-    :param sender:
-    :param recipient:
-    :param password:
-    :return:
-    """
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = sender
-    msg['To'] = ', '.join(recipient)
-
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
-        smtp_server.login(sender, password)
-        smtp_server.sendmail(sender, recipient, msg.as_string())
-    print('Mail sent successfully')
 
 def send_2FA(recipient):
     """
