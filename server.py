@@ -7,6 +7,7 @@ from threading import Thread
 from classes.chat_db_class import ChatDB
 from classes.person import Person
 from classes.msg_class import Message
+from classes.users_db_class import UsersDB
 
 # GLOBAL CONSTANTS
 HOST = 'localhost'
@@ -52,9 +53,13 @@ def send_to(msg):
         print(msg.get_to())
         if p.mail == msg.get_to():
             client = p.client_socket
-            lock.acquire()
-            client.sendall(pickle.dumps(msg))
-            lock.release()
+            try:
+                lock.acquire()
+                client.sendall(pickle.dumps(msg))
+                lock.release()
+                print("sent")
+            except Exception as e:
+                print(e)
 
 
 def client_communication(person):
@@ -63,14 +68,44 @@ def client_communication(person):
     :param person: Person
     :return: None
     """
+    print("Client communication")
     global chat_db
+    global users_db
 
     client = person.client_socket
 
     # First message received is always the person's addr
     # Convert Pickle string back to Python object
-    name = pickle.loads(client.recv(BUFSIZ))
-    person.set_name(name)
+    try:
+        client.sendall(pickle.dumps('WAITING'))
+        print("Sign sent")
+        mail = pickle.loads(client.recv(BUFSIZ))
+        password = pickle.loads(client.recv(BUFSIZ))
+    except Exception as e:
+        print(e)
+        return
+
+    if not(users_db.user_check(mail, password)):
+        try:
+            client.sendall(pickle.dumps('WRONG PASSWORD OR MAIL'))
+            return
+        except Exception as e:
+            print(e)
+            return
+
+    try:
+        client.sendall(pickle.dumps('OK'))
+    except Exception as e:
+        print(e)
+        return
+
+    response = pickle.loads(client.recv(BUFSIZ))
+    print(response)
+    if not(response == "READY"):
+        client.close()
+        return
+
+    person.set_mail(mail)
     persons.append(person)
 
     print(person.mail)
@@ -90,6 +125,7 @@ def client_communication(person):
     while True: # wait for any messages from person
         try:
             msg_object=pickle.loads(client.recv(BUFSIZ))
+            print(msg_object)
             if msg_object.get_info() == "EXIT":
                 exit(9999)
             lock.acquire()
@@ -117,9 +153,11 @@ def wait_for_connection():
         address = None
         try:
             client_socket, address = SERVER.accept()
+            print("[CONNECTED]", address)
         except:
             pass
         if client_socket:
+            print("[CONNECTED]")
             p = Person(address, client_socket)
             threading.Thread(target=client_communication, args=(p,)).start()
 
@@ -128,6 +166,10 @@ def wait_for_connection():
 if __name__ == "__main__":
     global chat_db
     chat_db = ChatDB()
+    global users_db
+    users_db = UsersDB()
+    users_db.insert_new_user("aaa@mb.com", "bbb")
+    #wait_for_connection()
     SERVER.listen(MAX_CONNECTIONS) # open server to listen for connections
     print("[STARTED] waiting for connections...")
     ACCEPT_THREAD = Thread(target=wait_for_connection)

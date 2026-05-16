@@ -28,34 +28,35 @@ class Client(QThread):
         self.password = password
         self.callback = callback
         self.client_socket = socket(AF_INET, SOCK_STREAM)
-        data = self.connect_to_server()
-        receive_thread = Thread(target=self.receive_messages)
-        receive_thread.start()
+        self.logged_in = False
+        #data = self.connect_to_server()
+        self.receive_thread = Thread(target=self.receive_messages)
 
-    def connect_to_server(self):
-        """
-        Connect to server and then send the client mail
-        """
+
+
+    def log_in(self):
         try:
+            self.client_socket = socket(AF_INET, SOCK_STREAM)
             self.client_socket.connect(self.ADDR)
+            print("Connected to server")
         except ConnectionError as e:  # This is the correct syntax
             print("No Response -->  ", e)
+        except Exception as e:
+            print(e)
         try:
-            self.client_socket.sendall(pickle.dumps(self.mail))
-        except:
-            print("Can't Send -->  ")
-
-    def sign_up(self):
-
-        try:
-            self.client_socket.connect(self.ADDR)
-        except ConnectionError as e:  # This is the correct syntax
-            print("No Response -->  ", e)
-        try:
-            self.client_socket.sendall(pickle.dumps(self.mail))
-            self.client_socket.sendall(pickle.dumps(self.password))
-        except:
-            print("Can't Send -->  ")
+            response = pickle.loads(self.client_socket.recv(1024))
+            if response == 'WAITING':
+                self.client_socket.sendall(pickle.dumps(self.mail))
+                self.client_socket.sendall(pickle.dumps(self.password))
+                print("Sent mail")
+                response = pickle.loads(self.client_socket.recv(1024))
+                if response == 'WRONG PASSWORD OR MAIL':
+                    self.client_socket.close()
+                print(response)
+                print("2")
+                return response
+        except Exception as e:
+            print("Can't Send -->  ", e)
 
 
 
@@ -75,6 +76,13 @@ class Client(QThread):
             if self.callback and data:
                 self.callback(data)
 
+    def ready(self):
+        """
+        sends the server that he can send history
+        :return:
+        """
+        self.client_socket.sendall(pickle.dumps('READY'))
+        self.receive_thread.start()
 
     def send_message(self,data):
         """

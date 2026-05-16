@@ -5,15 +5,15 @@ class Person:
     def __init__(self,addr,client_socket):
         self.addr = addr
         self.client_socket = client_socket
-        self.name = None
+        self.mail = None
 
-    def set_name(self, name):
+    def set_mail(self, mail):
         """
         Sets the person's name
         :param name: str
         :return: None
         """
-        self.name=name
+        self.mail=mail
 
     def __repr__(self):
-        return f"Person({self.addr},{self.name})"
+        return f"Person({self.addr},{self.mail})"

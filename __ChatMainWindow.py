@@ -12,6 +12,8 @@ from threading import Thread
 from classes.client import Client
 from classes.msg_class import Message
 
+client = Client("a", "")
+
 
 # Build sync thread for message display
 class DisplayMessageSyncThread(QThread):
@@ -30,17 +32,17 @@ class DisplayMessageSyncThread(QThread):
 
 
 class ChatMainWindow(QMainWindow):
-    def __init__(self, name):
+    def __init__(self):
         super().__init__()
-        self.name = name
         self.qu = queue.Queue()  # Create a queue with a maximum size
         self.event = threading.Event() # Create thread event
 
         # Create client
-        self.client = Client(self.name, self.receive_new_message)
+        print(client.password)
+        client.callback = self.receive_new_message
 
         # for new message
-        self.w = NewMessageWindow(self.name, self.client)
+        self.w = NewMessageWindow()
 
         # Create the Display Message synchronizer thread
         self.DisplayMessageSyncThread = DisplayMessageSyncThread(self.event)
@@ -102,6 +104,10 @@ class ChatMainWindow(QMainWindow):
         # Set the central widget of the Window.
         self.setCentralWidget(container)
 
+        client.ready()
+
+
+
 
     def send_window(self):
         self.w.resize(750, 1000)
@@ -135,7 +141,6 @@ class ChatMainWindow(QMainWindow):
         The function calls get_all_widgets_from_layout function for capturing
         all widgets from layout, finally it and saves the chat history in a file
         """
-        widgets = self.get_all_widgets_from_layout()
         
         #-- Complete the function
         filename = f"chat_history_{self.name}.txt"
@@ -173,19 +178,10 @@ class ChatMainWindow(QMainWindow):
         #-- Complete the function
 
 
-    def get_all_widgets_from_layout(self):
-        """
-        Gets that window layout and returns a list of all layout's widgets
-        """
-        widgets = [self.title_label, self.message_edit, self.send_button, self.scroll_area, self.save_button]
-        ########-- Complete the function
-
-        return widgets
-
 class NewMessageWindow(QWidget):
-    def __init__(self, name, client):
+    def __init__(self):
         super().__init__()
-        self.name = name
+        #self.name = name
 
         self.setFixedHeight(600)
 
@@ -253,7 +249,7 @@ class NewMessageWindow(QWidget):
         text = self.message_edit.toPlainText()
         self.message_edit.clear()
         print(text)
-        msg_object = Message((datetime.datetime.now()).strftime("%Y %b %H:%M"), self.name, text, to)
+        msg_object = Message((datetime.datetime.now()).strftime("%Y %b %H:%M"), client.mail, text, to)
         try:
             self.client.send_message(msg_object)
             print("chat message has been successfully sent")
@@ -266,13 +262,17 @@ class NewMessageWindow(QWidget):
         # -- Complete the function
 
 def sign_in():
-        app_sign = QApplication(sys.argv)
-        window = SignWindow()
-        window.resize(750, 1000)
-        window.show()
-        sys.exit(app_sign.exec())
+    app_sign = QApplication(sys.argv)
+    window = SignWindow()
+    window.resize(500, 300)
+    window.show()
+    app_sign.exec()
+    app_sign.closeAllWindows()
+    return
 
-class SignWindow(QMainWindow): #need to be transferred to a new script
+
+
+class SignWindow(QMainWindow):  # need to be transferred to a new script
     def __init__(self):
         super().__init__()
 
@@ -280,28 +280,30 @@ class SignWindow(QMainWindow): #need to be transferred to a new script
         self.title_label = QLabel("Mail - Sign In")
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet("""
-            font-size: 36px;
+            font-size: 30px;
             font-weight: bold;
             color: red;
         """)
 
-        # Chat Label
-        self.chat_label = QLabel("Mail")
-
+        # Notes Label
+        self.notes_label = QLabel("")
+        self.notes_label.setStyleSheet("""
+                    font-size: 10px;
+                    font-weight: bold;
+                    color: orange;
+                """)
 
         self.mail_edit = QTextEdit()
-        self.mail_edit.setPlaceholderText("Type your mail...")
-        self.mail_edit.setFixedHeight(70)
+        self.mail_edit.setPlaceholderText("Type your mail...(e.g. {mymail}@mb.com)")
+        self.mail_edit.setFixedHeight(40)
 
         self.password_edit = QTextEdit()
-        self.password_edit.setPlaceholderText("Type your password...")
-        self.password_edit.setFixedHeight(70)
+        self.password_edit.setPlaceholderText("Type your password...(at least 8 characters is recommended)")
+        self.password_edit.setFixedHeight(40)
 
         # Submit message button
         self.sign_in_button = QPushButton("Sign In")
-        self.sign_in_button.clicked.connect(self.send_window)
-
-
+        self.sign_in_button.clicked.connect(self.check_user)
 
         # Save chat info button
         self.sign_up_button = QPushButton("New user?")
@@ -315,6 +317,7 @@ class SignWindow(QMainWindow): #need to be transferred to a new script
         self.layout = QVBoxLayout(central_widget)
 
         self.layout.addWidget(self.title_label)
+        self.layout.addWidget(self.notes_label)
         self.layout.addWidget(self.mail_edit)
         self.layout.addWidget(self.password_edit)
         self.layout.addWidget(self.sign_in_button)
@@ -326,12 +329,31 @@ class SignWindow(QMainWindow): #need to be transferred to a new script
         # Set the central widget of the Window.
         self.setCentralWidget(container)
 
-def GUI():
+    def check_user(self):
+        client.mail = self.mail_edit.toPlainText()
+        client.password = self.password_edit.toPlainText()
+        print(1)
+        response = client.log_in()
+        print(response)
+        if type(response) == str and response == 'WRONG PASSWORD OR MAIL':
+            self.notes_label.setText(response)
+        elif type(response) == str and response == 'OK':
+            client.logged_in = True
+            print(response)
+            self.close()
 
+
+    def save_chat_history(self):
+        pass
+
+def GUI():
+    sign_in()
+    if not(client.logged_in):
+        sys.exit()
+    print("signed")
     app = QApplication(sys.argv)
-    name = sys.argv[1]
-    print(name)
-    window = ChatMainWindow(name)
+    #name = sys.argv[1]
+    window = ChatMainWindow()
     window.resize(750, 1000)
     window.show()
     sys.exit(app.exec())

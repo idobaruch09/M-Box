@@ -22,7 +22,7 @@ class Message:
 
  
     def __repr__(self):
-        return"{}.\nFrom {}.\n{}\n\nTo: {}\n\n".format(self.msg_date, self.name, self.info, self.to)
+        return"{}\nFrom {}\n{}\n\nTo: {}\n\n".format(self.msg_date, self.name, self.info, self.to)
 
 
 
