@@ -107,8 +107,6 @@ class ChatMainWindow(QMainWindow):
         client.ready()
 
 
-
-
     def send_window(self):
         self.w.resize(750, 1000)
         self.w.show()
@@ -150,9 +148,6 @@ class ChatMainWindow(QMainWindow):
                 f.write(self.messages_trace.itemAt(i).widget().text() + "\n")
 
         print("chat info has been successfully saved")
-
-
-
 
    
     def receive_new_message(self, new_message):
@@ -293,6 +288,9 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
                     color: orange;
                 """)
 
+
+        self.TFA_win = TFAWindow()
+
         self.mail_edit = QTextEdit()
         self.mail_edit.setPlaceholderText("Type your mail...(e.g. {mymail}@mb.com)")
         self.mail_edit.setFixedHeight(40)
@@ -329,6 +327,14 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
         # Set the central widget of the Window.
         self.setCentralWidget(container)
 
+
+
+
+    def TFA_proccess(self):
+        self.TFA_win.resize(300, 300)
+        self.TFA_win.show()
+
+
     def check_user(self):
         client.mail = self.mail_edit.toPlainText()
         client.password = self.password_edit.toPlainText()
@@ -337,14 +343,80 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
         print(response)
         if type(response) == str and response == 'WRONG PASSWORD OR MAIL':
             self.notes_label.setText(response)
-        elif type(response) == str and response == 'OK':
-            client.logged_in = True
+        elif type(response) == str and response.split(' ')[0] == 'OK':
             print(response)
-            self.close()
-
+            self.hide()
+            self.TFA_proccess()
+            #client.logged_in = True
+            #self.close()
 
     def save_chat_history(self):
         pass
+
+class TFAWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        # self.name = name
+
+
+
+        # Title
+        self.title_label = QLabel("Authentication")
+        self.title_label.setAlignment(Qt.AlignCenter)
+        self.title_label.setStyleSheet("""
+            font-size: 28px;
+            font-weight: bold;
+            color: green;
+        """)
+        self.title_label.setFixedHeight(40)
+
+        # Notes Label
+        self.notes_label = QLabel("")
+        self.notes_label.setStyleSheet("""
+                            font-size: 10px;
+                            font-weight: bold;
+                            color: orange;
+                        """)
+        self.notes_label.setFixedHeight(40)
+
+        # Chat message input box with vertical scroll bar
+        self.code_edit = QTextEdit()
+        self.code_edit.setPlaceholderText("Type here the code you got...")
+        self.code_edit.setFixedHeight(30)
+
+
+        # Submit message button
+        self.send_button = QPushButton("> Submit code")
+        self.send_button.clicked.connect(self.check_code)
+
+        # Create a central widget
+        # central_widget = QWidget()
+        # self.setCentralWidget(central_widget)
+
+        # Create the Window Layout
+        self.layout = QVBoxLayout()
+
+        self.layout.addWidget(self.title_label)
+        self.layout.addWidget(self.notes_label)
+        self.layout.addWidget(self.code_edit)
+        self.layout.addWidget(self.send_button)
+
+        self.setLayout(self.layout)
+
+
+    def check_code(self):
+        code = self.code_edit.toPlainText()
+        print(1)
+        response = client.TFA_send(code)
+        print(response)
+        if type(response) == str and response == 'WRONG - Sending new code':
+            self.notes_label.setText(response)
+        elif type(response) == str and response == 'CORRECT':
+            self.hide()
+            client.logged_in = True
+            self.close()
+
+
 
 def GUI():
     sign_in()

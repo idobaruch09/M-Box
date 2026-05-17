@@ -7,7 +7,6 @@ password = ""
 with open("key.txt","r") as f:
     password=f.readlines()[3]
     password=password.replace(" ","")
-    print(password)
 
 subject = '2FA'
 body = 'Your Code: '
@@ -15,7 +14,7 @@ sender = 'oridostore1@gmail.com'
 recipient = [sender]
 
 
-def send_2FA(recipient):
+def send_TFA(recipient):
     """
     sends the 2FA email
     :param recipient: the Gmail to send auth code
@@ -42,5 +41,5 @@ def send_2FA(recipient):
         print(e)
         return False, ""
 
-print(send_2FA("2idobaruch@gmail.com"))
+#print(send_TFA("2idobaruch@gmail.com"))
 

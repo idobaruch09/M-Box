@@ -10,20 +10,21 @@ class UsersDB:
 
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS users_info (
             mail TEXT,
-            hashed_pass TEXT
+            hashed_pass TEXT,
+            auth_mail TEXT
             )""")
 
         self.conn.commit()
 
-    def insert_new_user(self, mail, password):
+    def insert_new_user(self, mail, password, auth_mail):
         hashed_pass = hashlib.sha256(password.encode()).hexdigest()
         self.cursor.execute("SELECT * FROM users_info where mail = :mail", {'mail': mail})
         fetched_data = self.cursor.fetchall()
         if not(fetched_data == []):
             return False # mail already exists
         with self.conn:
-            self.cursor.execute("INSERT INTO users_info VALUES(:mail,:hashed_pass)",
-                      {'mail': mail, 'hashed_pass': hashed_pass})
+            self.cursor.execute("INSERT INTO users_info VALUES(:mail,:hashed_pass,:auth_mail)",
+                      {'mail': mail, 'hashed_pass': hashed_pass, 'auth_mail': auth_mail})
             return True
 
     def user_check(self, mail, password):
@@ -33,12 +34,12 @@ class UsersDB:
             fetched_data = self.cursor.fetchall()
             print(fetched_data)
             if fetched_data == []:
-                return False
-            for mail, db_pass in fetched_data: #checks password
+                return False, ''
+            for mail, db_pass, auth_mail in fetched_data: #checks password
                 if hashed_pass == db_pass:
-                    return True
+                    return True, auth_mail
                 else:
-                    return False
+                    return False, ''
 
 
 #c = UsersDB()

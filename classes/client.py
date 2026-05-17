@@ -58,6 +58,15 @@ class Client(QThread):
         except Exception as e:
             print("Can't Send -->  ", e)
 
+    def TFA_send(self, code):
+        try:
+            self.client_socket.sendall(pickle.dumps(code))
+            print("Sent code")
+            response = pickle.loads(self.client_socket.recv(1024))
+            return response
+        except Exception as e:
+            print("Can't Send -->  ", e)
+
 
 
     def receive_messages(self):

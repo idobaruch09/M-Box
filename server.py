@@ -4,6 +4,8 @@ from socket import AF_INET, socket, SOCK_STREAM
 from threading import Lock
 from threading import Thread
 
+import TFA
+import time
 from classes.chat_db_class import ChatDB
 from classes.person import Person
 from classes.msg_class import Message
@@ -85,7 +87,8 @@ def client_communication(person):
         print(e)
         return
 
-    if not(users_db.user_check(mail, password)):
+    checked, auth = users_db.user_check(mail, password)
+    if not checked:
         try:
             client.sendall(pickle.dumps('WRONG PASSWORD OR MAIL'))
             return
@@ -93,11 +96,32 @@ def client_communication(person):
             print(e)
             return
 
+
+
+    sent, code = TFA.send_TFA(auth) #send 2fa mail here(so the client wouldn't be able to change)
+
     try:
-        client.sendall(pickle.dumps('OK'))
+        to_send = 'OK' + ' ' + str(auth)
+        client.sendall(pickle.dumps(to_send))
     except Exception as e:
         print(e)
         return
+
+    while True: #checkin 2fa
+        try:
+            response = pickle.loads(client.recv(BUFSIZ))
+            print(response)
+            if response == code:
+                client.sendall(pickle.dumps('CORRECT'))
+                break
+            else:
+                client.sendall(pickle.dumps('WRONG - Sending new code'))
+                sent, code = TFA.send_TFA(auth)  # send 2fa mail again
+                print('Sent new code')
+        except Exception as e:
+            print(e)
+            return
+
 
     response = pickle.loads(client.recv(BUFSIZ))
     print(response)
@@ -168,7 +192,7 @@ if __name__ == "__main__":
     chat_db = ChatDB()
     global users_db
     users_db = UsersDB()
-    users_db.insert_new_user("aaa@mb.com", "bbb")
+    users_db.insert_new_user("aaa@mb.com", "bbb", 'yopiestun@gmail.com')
     #wait_for_connection()
     SERVER.listen(MAX_CONNECTIONS) # open server to listen for connections
     print("[STARTED] waiting for connections...")
