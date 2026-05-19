@@ -203,7 +203,7 @@ class NewMessageWindow(QWidget):
 
 
         self.To_edit = QTextEdit()
-        self.To_edit.setPlaceholderText("To:")
+        self.To_edit.setPlaceholderText("To: (e.g.: {e1@mb.com,e2@mb.com}... comas between, no spaces!)")
         self.To_edit.setFixedHeight(50)
 
 
@@ -239,7 +239,7 @@ class NewMessageWindow(QWidget):
         creates a message object and calls the client's send_message function
         that finally sends the message to the server
         """
-        to = self.To_edit.toPlainText()
+        to = self.To_edit.toPlainText() + "," + client.mail
         self.To_edit.clear()
         text = self.message_edit.toPlainText()
         self.message_edit.clear()
@@ -255,15 +255,6 @@ class NewMessageWindow(QWidget):
         if text == 'EXIT':
             exit(0)
         # -- Complete the function
-
-def sign_in():
-    app_sign = QApplication(sys.argv)
-    window = SignWindow()
-    window.resize(500, 300)
-    window.show()
-    app_sign.exec()
-    app_sign.closeAllWindows()
-    return
 
 
 
@@ -291,12 +282,14 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
 
         self.TFA_win = TFAWindow()
 
+        self.new_user_win = NewUserWindow()
+
         self.mail_edit = QTextEdit()
         self.mail_edit.setPlaceholderText("Type your mail...(e.g. {mymail}@mb.com)")
         self.mail_edit.setFixedHeight(40)
 
         self.password_edit = QTextEdit()
-        self.password_edit.setPlaceholderText("Type your password...(at least 8 characters is recommended)")
+        self.password_edit.setPlaceholderText("Type your password...") #(at least 8 characters is recommended)
         self.password_edit.setFixedHeight(40)
 
         # Submit message button
@@ -305,7 +298,7 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
 
         # Save chat info button
         self.sign_up_button = QPushButton("New user?")
-        self.sign_up_button.clicked.connect(self.save_chat_history)
+        self.sign_up_button.clicked.connect(self.new_user_process)
 
         # Create a central widget
         central_widget = QWidget()
@@ -330,7 +323,7 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
 
 
 
-    def TFA_proccess(self):
+    def TFA_process(self):
         self.TFA_win.resize(300, 300)
         self.TFA_win.show()
 
@@ -346,12 +339,13 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
         elif type(response) == str and response.split(' ')[0] == 'OK':
             print(response)
             self.hide()
-            self.TFA_proccess()
+            self.TFA_process()
             #client.logged_in = True
             #self.close()
 
-    def save_chat_history(self):
-        pass
+    def new_user_process(self):
+        self.new_user_win.resize(450, 550)
+        self.new_user_win.show()
 
 class TFAWindow(QWidget):
     def __init__(self):
@@ -417,6 +411,96 @@ class TFAWindow(QWidget):
             self.close()
 
 
+class NewUserWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        # self.name = name
+
+
+
+        # Title
+        self.title_label = QLabel("NEW USER")
+        self.title_label.setAlignment(Qt.AlignCenter)
+        self.title_label.setStyleSheet("""
+            font-size: 28px;
+            font-weight: bold;
+            color: blue;
+        """)
+        self.title_label.setFixedHeight(40)
+
+        # Notes Label
+        self.notes_label = QLabel("")
+        self.notes_label.setStyleSheet("""
+                            font-size: 10px;
+                            font-weight: bold;
+                            color: orange;
+                        """)
+        self.notes_label.setFixedHeight(40)
+
+        # Chat message input box with vertical scroll bar
+        self.mail_edit = QTextEdit()
+        self.mail_edit.setPlaceholderText("Type here mail(e.g: example@mb.com)...")
+        self.mail_edit.setFixedHeight(30)
+
+         # Chat message input box with vertical scroll bar
+        self.password_edit = QTextEdit()
+        self.password_edit.setPlaceholderText("Type here password(at least 8 characters is recommended)...")
+        self.password_edit.setFixedHeight(30)
+
+         # Chat message input box with vertical scroll bar
+        self.auth_edit = QTextEdit()
+        self.auth_edit.setPlaceholderText("Type here authorization gmail(Make sure it's correct!!)...")
+        self.auth_edit.setFixedHeight(30)
+
+
+        # Submit message button
+        self.send_button = QPushButton("> Submit")
+        self.send_button.clicked.connect(self.create_user)
+
+        # Create a central widget
+        # central_widget = QWidget()
+        # self.setCentralWidget(central_widget)
+
+        # Create the Window Layout
+        self.layout = QVBoxLayout()
+
+        self.layout.addWidget(self.title_label)
+        self.layout.addWidget(self.notes_label)
+        self.layout.addWidget(self.mail_edit)
+        self.layout.addWidget(self.password_edit)
+        self.layout.addWidget(self.auth_edit)
+        self.layout.addWidget(self.send_button)
+
+        self.setLayout(self.layout)
+
+
+    def create_user(self):
+        mail = self.mail_edit.toPlainText()
+        password = self.password_edit.toPlainText()
+        auth = self.auth_edit.toPlainText()
+        if auth.strip() == '' or mail.strip() == '' or password.strip() == '':
+            self.notes_label.setText('All fields are required.')
+            return
+        response = client.new_user(mail, password, auth)
+        print(response)
+        self.notes_label.setText(response)
+        if type(response) == str and response == 'CREATED':
+            self.notes_label.setText('Account created successfully! You can log-in now!')
+            self.notes_label.setStyleSheet("""
+                                        font-size: 10px;
+                                        font-weight: bold;
+                                        color: green;
+                                    """)
+
+
+def sign_in():
+    app_sign = QApplication(sys.argv)
+    window = SignWindow()
+    window.resize(500, 300)
+    window.show()
+    app_sign.exec()
+    app_sign.closeAllWindows()
+    return
 
 def GUI():
     sign_in()

@@ -34,7 +34,7 @@ class UsersDB:
             fetched_data = self.cursor.fetchall()
             print(fetched_data)
             if fetched_data == []:
-                return False, ''
+                return False, 'DO NOT EXIST'
             for mail, db_pass, auth_mail in fetched_data: #checks password
                 if hashed_pass == db_pass:
                     return True, auth_mail

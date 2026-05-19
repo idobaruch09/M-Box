@@ -4,6 +4,7 @@ from socket import AF_INET, socket, SOCK_STREAM
 from threading import Lock
 from threading import Thread
 
+import re
 import TFA
 import time
 from classes.chat_db_class import ChatDB
@@ -53,15 +54,57 @@ def send_to(msg):
     for p in persons:
         print(p.mail)
         print(msg.get_to())
-        if p.mail == msg.get_to():
-            client = p.client_socket
-            try:
-                lock.acquire()
-                client.sendall(pickle.dumps(msg))
-                lock.release()
-                print("sent")
-            except Exception as e:
-                print(e)
+        recipients = msg.get_to()
+        recipients = recipients.split(',')
+        for recipient in recipients:
+            if p.mail == recipient:
+                client = p.client_socket
+                try:
+                    lock.acquire()
+                    client.sendall(pickle.dumps(msg))
+                    lock.release()
+                    print("sent")
+                except Exception as e:
+                    print(e)
+
+def check_mail(mail):
+    global users_db
+    pattern = r'([a-z]|[A-Z]|[0-9])+@mb.com'  # required pattern
+    result = re.match(pattern, mail)
+    checked, auth = users_db.user_check(mail, '')
+    if result and not checked and auth == 'DO NOT EXIST':
+        return True
+    else:
+        return False
+
+def new_user(client):
+    global users_db
+    mail =''
+    password = ''
+    auth_mail = ''
+    try:
+        client.sendall(pickle.dumps('WAITING'))
+        while True:
+            mail = pickle.loads(client.recv(BUFSIZ))
+            if check_mail(mail):
+                break
+            else:
+                client.sendall(pickle.dumps('INVALID MAIL'))
+    except Exception as e:
+        print(e)
+    try:
+        client.sendall(pickle.dumps('ACK'))
+        password = pickle.loads(client.recv(BUFSIZ))
+        client.sendall(pickle.dumps('ACK'))
+        auth_mail = pickle.loads(client.recv(BUFSIZ))
+
+        users_db.insert_new_user(mail, password, auth_mail)
+
+        client.sendall(pickle.dumps('CREATED'))
+    except Exception as e:
+        print(e)
+
+
 
 
 def client_communication(person):
@@ -76,13 +119,26 @@ def client_communication(person):
 
     client = person.client_socket
 
-    # First message received is always the person's addr
-    # Convert Pickle string back to Python object
+    client.sendall(pickle.dumps('REQUEST')) #waiting to know if the client wants to create a new user or log-in
+    response = pickle.loads(client.recv(BUFSIZ))
+    if response == "NEW":
+        new_user(client)
+        try:
+            client.close()
+            return
+        except Exception as e:
+            print(e)
+
+
+    # First message received is always the person's addr, then the password
     try:
         client.sendall(pickle.dumps('WAITING'))
         print("Sign sent")
-        mail = pickle.loads(client.recv(BUFSIZ))
+        mail = pickle.loads(client.recv(BUFSIZ))#TODO: add ack
+        print("Mail received")
+        client.sendall(pickle.dumps('ACK'))
         password = pickle.loads(client.recv(BUFSIZ))
+        print("Password received")
     except Exception as e:
         print(e)
         return
@@ -192,7 +248,7 @@ if __name__ == "__main__":
     chat_db = ChatDB()
     global users_db
     users_db = UsersDB()
-    users_db.insert_new_user("aaa@mb.com", "bbb", 'yopiestun@gmail.com')
+    #users_db.insert_new_user("aaa@mb.com", "bbb", '@gmail.com')
     #wait_for_connection()
     SERVER.listen(MAX_CONNECTIONS) # open server to listen for connections
     print("[STARTED] waiting for connections...")
