@@ -44,13 +44,7 @@ def broadcast(msg):
         client.sendall(pickle.dumps(msg))
         lock.release()
 
-def send_to(msg):
-    """
-    send new messages to all clients
-    :param msg: bytes["utf8"]
-    :param name: str
-    :return:
-    """
+def save_msg(msg):
     for p in persons:
         print(p.mail)
         print(msg.get_to())
@@ -58,14 +52,64 @@ def send_to(msg):
         recipients = recipients.split(',')
         for recipient in recipients:
             if p.mail == recipient:
-                client = p.client_socket
-                try:
-                    lock.acquire()
-                    client.sendall(pickle.dumps(msg))
-                    lock.release()
-                    print("sent")
-                except Exception as e:
-                    print(e)
+                p.waiting_msgs.append(msg)
+
+def send_to(person):
+    """
+    send new messages to all clients
+    :param msg: bytes["utf8"]
+    :param name: str
+    :return:
+    """
+    client = person.client_socket
+
+    try:
+        print(person.waiting_msgs)
+        if person.waiting_msgs == []:
+            client.sendall(pickle.dumps("NONE"))
+            return
+        else:
+            client.sendall(pickle.dumps('SENDING'))
+            response = pickle.loads(client.recv(BUFSIZ))
+            if not response == 'OK':
+                return
+
+            data = pickle.dumps(person.waiting_msgs)
+            # self.client_socket.sendall()
+            size = len(data)
+
+            response = ""
+            while not response == 'ACK':
+                client.sendall(pickle.dumps(size))
+                response = pickle.loads(client.recv(1024))
+
+            response = ""
+            while not response == 'ACK':
+                client.sendall(data)
+                response = pickle.loads(client.recv(1024))
+
+            person.waiting_msgs = []
+
+    except Exception as e:
+        print(e)
+
+def get_msg(client):
+    client.sendall(pickle.dumps('START'))
+    print("Sent message start send")
+    msg_size = pickle.loads(client.recv(BUFSIZ)) #first the size
+    print(msg_size)
+    client.sendall(pickle.dumps('ACK'))
+    print(1)
+    # client.sendall(pickle.dumps('ACK'))
+    msg_object = pickle.loads(client.recv(msg_size))
+    client.sendall(pickle.dumps('ACK'))
+    print(msg_object)
+
+    lock.acquire()
+    chat_db.insert_msg(msg_object)
+    lock.release()
+    save_msg(msg_object)
+
 
 def check_mail(mail):
     global users_db
@@ -104,10 +148,24 @@ def new_user(client):
     except Exception as e:
         print(e)
 
+def client_loop(client, person):
+    while True:  # wait for any requests from person
+        try:
+            request = pickle.loads(client.recv(BUFSIZ))
+            print(request)
+            if request == "NEWMSG?":
+                send_to(person)
+            elif request == "SENDMSG":
+                get_msg(client)
+            elif not request:
+                continue
+            else:
+                client.sendall(pickle.dumps('WRONG'))
+        except Exception as e:
+            print("[EXCEPTION]", e)
+            break
 
-
-
-def client_communication(person):
+def client_setup(person):
     """
     Thread to handle all messages from client
     :param person: Person
@@ -128,7 +186,6 @@ def client_communication(person):
             return
         except Exception as e:
             print(e)
-
 
     # First message received is always the person's addr, then the password
     try:
@@ -151,8 +208,6 @@ def client_communication(person):
         except Exception as e:
             print(e)
             return
-
-
 
     sent, code = TFA.send_TFA(auth) #send 2fa mail here(so the client wouldn't be able to change)
 
@@ -179,46 +234,19 @@ def client_communication(person):
             return
 
 
-    response = pickle.loads(client.recv(BUFSIZ))
-    print(response)
-    if not(response == "READY"):
-        client.close()
-        return
-
     person.set_mail(mail)
     persons.append(person)
 
     print(person.mail)
     history = chat_db.get_history(person.mail)
+    person.waiting_msgs += history
 
-    lock.acquire()
-    client.sendall(pickle.dumps(history))
-    lock.release()
-
-    #msg_object = Message((datetime.datetime.now()).strftime("%Y %b %H:%M"), addr, f"{addr} has join the chat!")
-    #lock.acquire()
-    #chat_db.insert_msg(msg_object)
-    #lock.release()
-
-    #broadcast(msg_object) # boradcast welcome message
-
-    while True: # wait for any messages from person
-        try:
-            msg_object=pickle.loads(client.recv(BUFSIZ))
-            print(msg_object)
-            if msg_object.get_info() == "EXIT":
-                exit(9999)
-            lock.acquire()
-            chat_db.insert_msg(msg_object)
-            #-- Complete the instruction (insert to db)
-            lock.release()
-            send_to(msg_object)
-            #broadcast(msg_object)
-
-        except Exception as e:
-            print("[EXCEPTION]", e)
-            break
-
+    response = pickle.loads(client.recv(BUFSIZ))  # TODO: add try
+    print(response)
+    if not (response == "READY"):
+        client.close()
+        return
+    client_loop(client, person)
 
 
 def wait_for_connection():
@@ -239,16 +267,16 @@ def wait_for_connection():
         if client_socket:
             print("[CONNECTED]")
             p = Person(address, client_socket)
-            threading.Thread(target=client_communication, args=(p,)).start()
+            threading.Thread(target=client_setup, args=(p,)).start()
 
- 
+
 
 if __name__ == "__main__":
     global chat_db
     chat_db = ChatDB()
     global users_db
     users_db = UsersDB()
-    #users_db.insert_new_user("aaa@mb.com", "bbb", '@gmail.com')
+    users_db.insert_new_user("a", "a", '2idobaruch@gmail.com')
     #wait_for_connection()
     SERVER.listen(MAX_CONNECTIONS) # open server to listen for connections
     print("[STARTED] waiting for connections...")

@@ -6,6 +6,7 @@ class Person:
         self.addr = addr
         self.client_socket = client_socket
         self.mail = None
+        self.waiting_msgs = []
 
     def set_mail(self, mail):
         """

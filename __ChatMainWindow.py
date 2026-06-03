@@ -1,5 +1,6 @@
 import time
 from logging import exception
+from mailbox import NoSuchMailboxError
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -11,8 +12,9 @@ import queue
 from threading import Thread
 from classes.client import Client
 from classes.msg_class import Message
+import file_explorer
 
-client = Client("a", "")
+client = Client("", "")
 
 
 # Build sync thread for message display
@@ -42,7 +44,10 @@ class ChatMainWindow(QMainWindow):
         client.callback = self.receive_new_message
 
         # for new message
-        self.w = NewMessageWindow()
+        self.send_win = NewMessageWindow()
+
+        self.msg_wins = []
+        self.index = 0
 
         # Create the Display Message synchronizer thread
         self.DisplayMessageSyncThread = DisplayMessageSyncThread(self.event)
@@ -72,6 +77,7 @@ class ChatMainWindow(QMainWindow):
 
         # Chat messages trace label
         self.messages_trace = QVBoxLayout()
+        self.messages_trace.setAlignment(Qt.AlignTop)
 
         # Scroll area for messages trace with vertical scroll bar
         self.scroll_widget = QWidget()
@@ -96,7 +102,7 @@ class ChatMainWindow(QMainWindow):
         #self.layout.addWidget(self.message_edit)
         self.layout.addWidget(self.send_button)
         self.layout.addWidget(self.scroll_area)
-        self.layout.addWidget(self.save_button)
+        #self.layout.addWidget(self.save_button)
 
         container = QWidget()
         container.setLayout(self.layout)
@@ -108,9 +114,11 @@ class ChatMainWindow(QMainWindow):
 
 
     def send_window(self):
-        self.w.resize(750, 1000)
-        self.w.show()
+        self.send_win.resize(750, 1000)
+        self.send_win.show()
 
+    def open_msg_win(self,msg_win):
+        msg_win.show()
 
     def display_message(self):
         """
@@ -119,19 +127,30 @@ class ChatMainWindow(QMainWindow):
         and adds it to the messages trace scroll area widget.
         """
         while not self.qu.empty():
+            print("loading")
             new_message = self.qu.get()
-            #-- Complete the function
-            block = QLabel(new_message.__repr__())
-            block.setWordWrap(True)
+            print(1)
+            msg_win = MSGWindow(new_message)
+            print(2)
+            self.msg_wins.append(msg_win)
+            print(3)
+            block = QPushButton(f'{new_message.msg_date}.\nFrom: {new_message.name}')
+            print(4)
+            # '_' catches PyQt's default 'checked' boolean parameter.
+            # 'current_win=msg_win' freezes the loop's current window instance in time.
+            block.clicked.connect(lambda _,x=msg_win: self.open_msg_win(x))
+            print(5)
+            block.setFixedHeight(70)
+            print(6)
 
             block.setStyleSheet("""
-                   background-color: #9ec1cf;
-                    padding: 15px;
-                  font-size: 14px;
-                    border-radius: 5px;
-            """)
-
+                                                       background-color: #9ec1cf;
+                                                        padding: 15px;
+                                                      font-size: 14px;
+                                                        border-radius: 5px;
+                                                """)
             self.messages_trace.addWidget(block)
+            print("finished")
 
     def save_chat_history(self):
         """
@@ -148,7 +167,6 @@ class ChatMainWindow(QMainWindow):
                 f.write(self.messages_trace.itemAt(i).widget().text() + "\n")
 
         print("chat info has been successfully saved")
-
    
     def receive_new_message(self, new_message):
         """
@@ -172,8 +190,59 @@ class ChatMainWindow(QMainWindow):
             print(new_message)
         #-- Complete the function
 
+class MSGWindow(QWidget): #TODO: add file uploading
+    def __init__(self, message):
+        super().__init__()
 
-class NewMessageWindow(QWidget):
+        self.message = message
+
+        # Chat messages trace label
+        self.message_trace = QVBoxLayout()
+        self.message_trace.setAlignment(Qt.AlignTop)
+
+        # Scroll area for messages trace with vertical scroll bar
+        self.scroll_widget = QWidget()
+        self.scroll_widget.setLayout(self.message_trace)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setWidget(self.scroll_widget)
+
+        self.setFixedHeight(400)
+        self.setFixedWidth(400)
+
+        self.txt = message.__repr__()
+
+        self.msg_block = QLabel(self.txt)
+        self.msg_block.setAlignment(Qt.AlignCenter)
+        self.msg_block.setStyleSheet("""
+                           background-color: #9ec1cf;
+                            padding: 15px;
+                          font-size: 14px;
+                            border-radius: 5px;
+                    """)
+        self.msg_block.setWordWrap(True)
+        #self.msg_label.setFixedHeight(350)
+        #self.msg_label.setFixedWidth(350)
+
+        self.file_block = QPushButton("Download file")
+        self.file_block.clicked.connect(self.save_file)
+
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.scroll_area)
+        self.setLayout(self.layout)
+
+        self.message_trace.addWidget(self.msg_block)
+        print(message.data)
+        if message.data is not None:
+            print(8)
+            self.message_trace.addWidget(self.file_block)
+
+    def save_file(self):
+        file_explorer.saveFile(self.message.data, self.message.file_type)
+
+
+class NewMessageWindow(QWidget): #TODO: add file uploading
     def __init__(self):
         super().__init__()
         #self.name = name
@@ -206,6 +275,10 @@ class NewMessageWindow(QWidget):
         self.To_edit.setPlaceholderText("To: (e.g.: {e1@mb.com,e2@mb.com}... comas between, no spaces!)")
         self.To_edit.setFixedHeight(50)
 
+        self.file_button = QPushButton("Add file")
+        self.file_button.clicked.connect(self.toggle_file)
+        self.file_data = None
+        self.file_type = ""
 
 
 
@@ -224,6 +297,7 @@ class NewMessageWindow(QWidget):
 
         self.layout.addWidget(self.title_label)
         self.layout.addWidget(self.To_edit)
+        self.layout.addWidget(self.file_button)
         self.layout.addWidget(self.message_edit)
         self.layout.addWidget(self.send_button)
 
@@ -231,6 +305,29 @@ class NewMessageWindow(QWidget):
 
         # Set the central widget of the Window.
         #self.setCentralWidget(container)
+
+    def toggle_file(self):
+
+        if self.file_data is None:
+            print("adding file")
+            self.add_file()
+            return
+        else:
+            print("remove")
+            self.remove_file()
+            return
+
+    def add_file(self):
+        self.file_data, self.file_type = file_explorer.openFile()
+        print("data taken:")
+        print(self.file_data)
+        self.file_button.setText("Remove the added file")
+
+    def remove_file(self):
+        print("Removing file")
+        self.file_data = None
+        self.file_type = ""
+        self.file_button.setText("Add file")
 
     def send_message(self):
         """
@@ -240,11 +337,15 @@ class NewMessageWindow(QWidget):
         that finally sends the message to the server
         """
         to = self.To_edit.toPlainText() + "," + client.mail
-        self.To_edit.clear()
         text = self.message_edit.toPlainText()
+        if to.strip() == "" : #or text.strip() == ""
+            return
+        self.To_edit.clear()
         self.message_edit.clear()
+
         print(text)
-        msg_object = Message((datetime.datetime.now()).strftime("%Y %b %H:%M"), client.mail, text, to)
+        msg_object = Message((datetime.datetime.now()).strftime("%Y %b %H:%M"), client.mail, text, to, self.file_data, self.file_type)
+        self.remove_file()
         try:
             self.client.send_message(msg_object)
             print("chat message has been successfully sent")
@@ -255,8 +356,6 @@ class NewMessageWindow(QWidget):
         if text == 'EXIT':
             exit(0)
         # -- Complete the function
-
-
 
 class SignWindow(QMainWindow):  # need to be transferred to a new script
     def __init__(self):

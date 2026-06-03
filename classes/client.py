@@ -1,12 +1,17 @@
+from http.client import responses
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 from PyQt5.QtCore import QThread
 import pickle
+from threading import Lock
 
+
+
+lock = Lock()
 from requests.utils import dotted_netmask
+import time
+import sys
 
-
-#from pygame.examples.audiocapture import callback
 
 
 class Client(QThread):
@@ -34,6 +39,8 @@ class Client(QThread):
         self.logged_in = False
         #data = self.connect_to_server()
         self.receive_thread = Thread(target=self.receive_messages)
+        self.stop_thread = False
+        self.stopped = False
 
     def new_user(self, mail, password, auth_mail): #TODO: finish this func, close connection after creating
         try:
@@ -73,8 +80,6 @@ class Client(QThread):
         except Exception as e:
             print(e)
             return 'ERROR'
-
-
 
     def log_in(self):
         try:
@@ -118,7 +123,28 @@ class Client(QThread):
         except Exception as e:
             print("Can't Send -->  ", e)
 
+    def ask_new_messages(self):
+        try: #NOTE: may send array of msg objects
+            self.client_socket.sendall(pickle.dumps('NEWMSG?'))
+            response = pickle.loads(self.client_socket.recv(1024))
+            print(response)
+            if response == 'NONE':
+                return
+            elif response == 'SENDING':
+                self.client_socket.sendall(pickle.dumps('OK'))
+                data_size = pickle.loads(self.client_socket.recv(1024))  # first the size
+                self.client_socket.sendall(pickle.dumps('ACK'))
+                print(data_size)
+                # client.sendall(pickle.dumps('ACK'))
+                data = pickle.loads(self.client_socket.recv(data_size))
+                self.client_socket.sendall(pickle.dumps('ACK'))
+                print(data)
+                if self.callback and data:
+                    self.callback(data)
 
+
+        except Exception as e:
+            print("Can't Send -->  ", e)
 
     def receive_messages(self):
         """
@@ -126,32 +152,67 @@ class Client(QThread):
         :return: None
         """
         while True:
-            try:
-                data = pickle.loads(self.client_socket.recv(self.BUFSIZ*20))
-            except Exception as e:
-                print("[EXCEPTION]", e)
-                break
- 
-           # -- Complete the instruction
-            if self.callback and data:
-                self.callback(data)
+            self.stopped = True
+            #print(self.stop_thread)
+            while not self.stop_thread:
+                self.stopped = False
+                try:
+                    print(11111)
+                    self.ask_new_messages()
+                    time.sleep(1)
+                except Exception as e:
+                    print("[EXCEPTION]", e)
+                    break
+
+                # -- Complete the instruction
+
 
     def ready(self):
         """
         sends the server that he can send history
         :return:
         """
-        self.client_socket.sendall(pickle.dumps('READY'))
-        self.receive_thread.start()
+        try:
+            self.client_socket.sendall(pickle.dumps('READY'))
+            self.receive_thread.start()
+        except Exception as e:
+            print("[EXCEPTION]", e)
 
-    def send_message(self,data):
+    def send_message(self,msg): #TODO: add FTP logic (remember sending msg obj without the data), also add note for too long msg
         """
         send messages to server
         :param msg: str
         :return: None
         """
+        self.stop_thread = True
+        while not self.stopped:
+            print(666)
+            time.sleep(1)
+            pass
+
+        self.client_socket.sendall(pickle.dumps('SENDMSG'))
+        print("sent1")
+        response = pickle.loads(self.client_socket.recv(1024))
+        print(response)
+        if not response == 'START':
+            return
         # Convert Python object to Pickle bytes
-        self.client_socket.sendall(pickle.dumps(data))
- 
+        data = pickle.dumps(msg)
+        #self.client_socket.sendall()
+        size = len(data)
+
+        response = ""
+        while not response == 'ACK':
+            print("sending ", size)
+            self.client_socket.sendall(pickle.dumps(size))
+            print("sent2")
+            response = pickle.loads(self.client_socket.recv(1024))
+
+        response = ""
+        while not response == 'ACK':
+            self.client_socket.sendall(data)
+            response = pickle.loads(self.client_socket.recv(1024))
+
+        self.stop_thread = False
 
 
