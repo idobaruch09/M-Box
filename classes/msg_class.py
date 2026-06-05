@@ -1,7 +1,7 @@
 
 class Message:
     """ Message class , includes the name(who sent), the text of the message, the time of the message
-    ,and who needs to get the message"""
+    , who needs to get the message, the file-data and it's type"""
     def __init__(self, msg_date, name, info, to, data=None, file_type=""):
         self.msg_date = msg_date
         self.name = name

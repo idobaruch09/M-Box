@@ -23,7 +23,7 @@ def saveFile(data, type): #not finished - add try and except
     """
     raw = bytes.fromhex(data)
     file_path = filedialog.asksaveasfilename(initialdir="C:",  #gets path
-                                    filetypes=[("Text file",".txt"),("All files", ".*"), ])
+                                    filetypes=[("All files", ".*"), ])
     print(file_path)
     if file_path is None:
         return

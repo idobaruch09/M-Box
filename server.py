@@ -11,6 +11,7 @@ from classes.chat_db_class import ChatDB
 from classes.person import Person
 from classes.msg_class import Message
 from classes.users_db_class import UsersDB
+import ssl
 
 # GLOBAL CONSTANTS
 HOST = 'localhost'
@@ -25,7 +26,9 @@ persons = []
 SERVER = socket(AF_INET, SOCK_STREAM)
 SERVER.bind(ADDR) # set up server
 
-
+# 1. הגדרת קונטקסט ה-TLS של השרת וטעינת התעודות
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context.load_cert_chain(certfile="server.crt", keyfile="server.key")
 
 
 
@@ -100,8 +103,12 @@ def get_msg(client):
     print(msg_size)
     client.sendall(pickle.dumps('ACK'))
     print(1)
-    # client.sendall(pickle.dumps('ACK'))
-    msg_object = pickle.loads(client.recv(msg_size))
+    raw = client.recv(msg_size)
+    print(len(raw))
+    while not len(raw) == msg_size:
+        print(len(raw))
+        raw += client.recv(msg_size)
+    msg_object = pickle.loads(raw)
     client.sendall(pickle.dumps('ACK'))
     print(msg_object)
 
@@ -266,7 +273,8 @@ def wait_for_connection():
             pass
         if client_socket:
             print("[CONNECTED]")
-            p = Person(address, client_socket)
+            secure_client_socket = context.wrap_socket(client_socket, server_side=True)
+            p = Person(address, secure_client_socket)
             threading.Thread(target=client_setup, args=(p,)).start()
 
 

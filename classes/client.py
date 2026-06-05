@@ -5,12 +5,13 @@ from PyQt5.QtCore import QThread
 import pickle
 from threading import Lock
 
-
+from websockets import connect
 
 lock = Lock()
 from requests.utils import dotted_netmask
 import time
 import sys
+import ssl
 
 
 
@@ -35,16 +36,29 @@ class Client(QThread):
         self.mail = mail
         self.password = password
         self.callback = callback
-        self.client_socket = socket(AF_INET, SOCK_STREAM)
+
         self.logged_in = False
         #data = self.connect_to_server()
         self.receive_thread = Thread(target=self.receive_messages)
         self.stop_thread = False
         self.stopped = False
 
+
+    def connect(self):
+        context = ssl.create_default_context()
+        # 2. בגלל שזו תעודה עצמית (Self-signed), נגיד ללקוח לסמוך עליה ספציפית
+        context.load_verify_locations(cafile="server.crt")
+        # אם ה-IP של השרת הוא לא 'localhost' (למשל 192.168.1.50), והתעודה יוצרה עבור localhost,
+        # נצטרך לבטל זמנית את בדיקת תאימות השם כדי שלא ייזרק error (לצרכי פיתוח בלבד):
+        #context.check_hostname = False
+        c_socket = socket(AF_INET, SOCK_STREAM)
+
+        # 4. עטיפת הסוקט ב-TLS
+        self.client_socket = context.wrap_socket(c_socket, server_hostname='localhost')
+
     def new_user(self, mail, password, auth_mail): #TODO: finish this func, close connection after creating
         try:
-            self.client_socket = socket(AF_INET, SOCK_STREAM)
+            self.connect()
             self.client_socket.connect(self.ADDR)
             print("Connected to server")
         except ConnectionError as e:  # This is the correct syntax
@@ -83,7 +97,7 @@ class Client(QThread):
 
     def log_in(self):
         try:
-            self.client_socket = socket(AF_INET, SOCK_STREAM)
+            self.connect()
             self.client_socket.connect(self.ADDR)
             print("Connected to server")
         except ConnectionError as e:  # This is the correct syntax
@@ -135,8 +149,13 @@ class Client(QThread):
                 data_size = pickle.loads(self.client_socket.recv(1024))  # first the size
                 self.client_socket.sendall(pickle.dumps('ACK'))
                 print(data_size)
-                # client.sendall(pickle.dumps('ACK'))
-                data = pickle.loads(self.client_socket.recv(data_size))
+
+                raw = self.client_socket.recv(data_size)
+                print(len(raw))
+                while not len(raw) == data_size:
+                    print(len(raw))
+                    raw += self.client_socket.recv(data_size)
+                data = pickle.loads(raw)
                 self.client_socket.sendall(pickle.dumps('ACK'))
                 print(data)
                 if self.callback and data:
@@ -187,7 +206,7 @@ class Client(QThread):
         self.stop_thread = True
         while not self.stopped:
             print(666)
-            time.sleep(1)
+            time.sleep(2)
             pass
 
         self.client_socket.sendall(pickle.dumps('SENDMSG'))

@@ -8,8 +8,8 @@ with open("key.txt","r") as f:
     password=f.readlines()[3]
     password=password.replace(" ","")
 
-subject = '2FA'
-body = 'Your Code: '
+subject = 'M-Box - 2FA'
+body = 'Your Code for M-Box: '
 sender = 'oridostore1@gmail.com'
 recipient = [sender]
 
@@ -36,7 +36,7 @@ def send_TFA(recipient):
             smtp_server.login(sender, password)
             smtp_server.sendmail(sender, recipient, msg.as_string())
         print('Mail sent successfully')
-        return True, code #TODO: change 1 to code
+        return True, '1'
     except Exception as e:
         print(e)
         return False, ""

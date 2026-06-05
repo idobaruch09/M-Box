@@ -138,7 +138,7 @@ class ChatMainWindow(QMainWindow):
             print(4)
             # '_' catches PyQt's default 'checked' boolean parameter.
             # 'current_win=msg_win' freezes the loop's current window instance in time.
-            block.clicked.connect(lambda _,x=msg_win: self.open_msg_win(x))
+            block.clicked.connect(lambda _,x=msg_win: self.open_msg_win(x)) #throwaway variable to catch an unwanted argument - indicating the button's toggle state
             print(5)
             block.setFixedHeight(70)
             print(6)
@@ -190,7 +190,10 @@ class ChatMainWindow(QMainWindow):
             print(new_message)
         #-- Complete the function
 
-class MSGWindow(QWidget): #TODO: add file uploading
+class MSGWindow(QWidget): #TODO:add copy text option
+    """
+    after clicking on incoming message this window will appear
+    """
     def __init__(self, message):
         super().__init__()
 
@@ -208,8 +211,8 @@ class MSGWindow(QWidget): #TODO: add file uploading
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.scroll_widget)
 
-        self.setFixedHeight(400)
-        self.setFixedWidth(400)
+        self.setFixedHeight(500)
+        self.setFixedWidth(760)
 
         self.txt = message.__repr__()
 
@@ -221,6 +224,8 @@ class MSGWindow(QWidget): #TODO: add file uploading
                           font-size: 14px;
                             border-radius: 5px;
                     """)
+
+        self.msg_block.setFixedWidth(750)
         self.msg_block.setWordWrap(True)
         #self.msg_label.setFixedHeight(350)
         #self.msg_label.setFixedWidth(350)
@@ -242,7 +247,10 @@ class MSGWindow(QWidget): #TODO: add file uploading
         file_explorer.saveFile(self.message.data, self.message.file_type)
 
 
-class NewMessageWindow(QWidget): #TODO: add file uploading
+class NewMessageWindow(QWidget):
+    """
+    This is the GUI window for sending a new message.
+    """
     def __init__(self):
         super().__init__()
         #self.name = name
@@ -307,7 +315,10 @@ class NewMessageWindow(QWidget): #TODO: add file uploading
         #self.setCentralWidget(container)
 
     def toggle_file(self):
-
+        """
+        after the button is clicked, the function will navigate to the required secondary-function
+        :return:
+        """
         if self.file_data is None:
             print("adding file")
             self.add_file()
@@ -318,12 +329,20 @@ class NewMessageWindow(QWidget): #TODO: add file uploading
             return
 
     def add_file(self):
+        """
+        adds the required file
+        :return:
+        """
         self.file_data, self.file_type = file_explorer.openFile()
         print("data taken:")
         print(self.file_data)
         self.file_button.setText("Remove the added file")
 
     def remove_file(self):
+        """
+        removing the uploaded file
+        :return:
+        """
         print("Removing file")
         self.file_data = None
         self.file_type = ""
@@ -331,10 +350,8 @@ class NewMessageWindow(QWidget): #TODO: add file uploading
 
     def send_message(self):
         """
-        This function is activated upon clicking the submit_message button.
-        it extracts the chat message data from the chat message input box,
-        creates a message object and calls the client's send_message function
-        that finally sends the message to the server
+        after send button is clicked, it sends the data through the client.
+        :return:
         """
         to = self.To_edit.toPlainText() + "," + client.mail
         text = self.message_edit.toPlainText()
@@ -358,6 +375,9 @@ class NewMessageWindow(QWidget): #TODO: add file uploading
         # -- Complete the function
 
 class SignWindow(QMainWindow):  # need to be transferred to a new script
+    """
+    GUI for signing in
+    """
     def __init__(self):
         super().__init__()
 
@@ -423,11 +443,13 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
 
 
     def TFA_process(self):
+        """activates the 2FA GUI"""
         self.TFA_win.resize(300, 300)
         self.TFA_win.show()
 
 
     def check_user(self):
+        """checking with the server if the mail and password are valid"""
         client.mail = self.mail_edit.toPlainText()
         client.password = self.password_edit.toPlainText()
         print(1)
@@ -443,10 +465,12 @@ class SignWindow(QMainWindow):  # need to be transferred to a new script
             #self.close()
 
     def new_user_process(self):
+        """displays the new user GUI"""
         self.new_user_win.resize(450, 550)
         self.new_user_win.show()
 
 class TFAWindow(QWidget):
+    """the GUI window for the second step in the log-in process.(2FA)"""
     def __init__(self):
         super().__init__()
         # self.name = name
@@ -498,6 +522,7 @@ class TFAWindow(QWidget):
 
 
     def check_code(self):
+        """checking the 2FA auth code with the server and displays the response"""
         code = self.code_edit.toPlainText()
         print(1)
         response = client.TFA_send(code)
@@ -511,6 +536,9 @@ class TFAWindow(QWidget):
 
 
 class NewUserWindow(QWidget):
+    """
+    the GUI window for creating a new user
+    """
     def __init__(self):
         super().__init__()
         # self.name = name
@@ -574,6 +602,10 @@ class NewUserWindow(QWidget):
 
 
     def create_user(self):
+        """
+        after the button was clicked, the info that the user filled is sent to the server
+        :return: writes in a label on the screen the server's response
+        """
         mail = self.mail_edit.toPlainText()
         password = self.password_edit.toPlainText()
         auth = self.auth_edit.toPlainText()
@@ -593,6 +625,10 @@ class NewUserWindow(QWidget):
 
 
 def sign_in():
+    """
+    beginning the sign-in process
+    :return:
+    """
     app_sign = QApplication(sys.argv)
     window = SignWindow()
     window.resize(500, 300)
@@ -602,6 +638,10 @@ def sign_in():
     return
 
 def GUI():
+    """
+    starting up the GUI by the right order
+    :return:
+    """
     sign_in()
     if not(client.logged_in):
         sys.exit()
