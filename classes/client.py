@@ -69,20 +69,24 @@ class Client(QThread):
             response = pickle.loads(self.client_socket.recv(1024))
             if response == "REQUEST":
                 self.client_socket.sendall(pickle.dumps('NEW'))
+                print("a")
             else:
                 return 'SERVER ERROR'
             response = pickle.loads(self.client_socket.recv(1024))
             if not response == 'WAITING':
                 return 'SERVER ERROR'
             self.client_socket.sendall(pickle.dumps(mail))
+            print("b")
             response = pickle.loads(self.client_socket.recv(1024))
             if not response == 'ACK':
                 return response
             self.client_socket.sendall(pickle.dumps(password))
+            print("c")
             response = pickle.loads(self.client_socket.recv(1024))
             if not response == 'ACK':
                 return 'ERROR'
             self.client_socket.sendall(pickle.dumps(auth_mail))
+            print("d")
             response = pickle.loads(self.client_socket.recv(1024))
             if not response == 'CREATED':
                 return 'ERROR'

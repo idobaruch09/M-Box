@@ -150,6 +150,7 @@ def new_user(client):
         auth_mail = pickle.loads(client.recv(BUFSIZ))
 
         users_db.insert_new_user(mail, password, auth_mail)
+        print(chat_db.create_new_table(mail))
 
         client.sendall(pickle.dumps('CREATED'))
     except Exception as e:
