@@ -46,17 +46,14 @@ class Client(QThread):
 
     def connect(self):
         context = ssl.create_default_context()
-        # 2. בגלל שזו תעודה עצמית (Self-signed), נגיד ללקוח לסמוך עליה ספציפית
-        context.load_verify_locations(cafile="server.crt")
-        # אם ה-IP של השרת הוא לא 'localhost' (למשל 192.168.1.50), והתעודה יוצרה עבור localhost,
-        # נצטרך לבטל זמנית את בדיקת תאימות השם כדי שלא ייזרק error (לצרכי פיתוח בלבד):
-        #context.check_hostname = False
+
+        context.load_verify_locations(cafile="server.crt") #this is the required crt(self-signed)
+        #context.check_hostname = False #the crt was created for localhost, do context.check_hostname = False when its not local host
         c_socket = socket(AF_INET, SOCK_STREAM)
 
-        # 4. עטיפת הסוקט ב-TLS
-        self.client_socket = context.wrap_socket(c_socket, server_hostname='localhost')
+        self.client_socket = context.wrap_socket(c_socket, server_hostname='localhost') #if check_hostname is false, no need to change this line
 
-    def new_user(self, mail, password, auth_mail): #TODO: finish this func, close connection after creating
+    def new_user(self, mail, password, auth_mail):
         try:
             self.connect()
             self.client_socket.connect(self.ADDR)
@@ -181,6 +178,7 @@ class Client(QThread):
                 self.stopped = False
                 try:
                     print(11111)
+                    time.sleep(2)
                     self.ask_new_messages()
                     time.sleep(1)
                 except Exception as e:

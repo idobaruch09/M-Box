@@ -9,7 +9,7 @@ class Message:
         self.to = to
         self.data = data
         self.file_type = file_type
-        self.scan_report = ""
+        self.scan_report = "No report"
 
 
     def get_date(self):
@@ -26,7 +26,7 @@ class Message:
 
  
     def __repr__(self):
-        return"{}\nFrom {}\n{}\n\nTo: {}\n\n".format(self.msg_date, self.name, self.info, self.to)
+        return f"{self.msg_date}\nFrom: {self.name}\n\nScan report: {self.scan_report}\n\n{self.info}\n\nTo: {self.to}\n"
 
 
 

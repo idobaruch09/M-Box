@@ -1,5 +1,6 @@
 import pickle
 import threading
+from http.cookiejar import request_port
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Lock
 from threading import Thread
@@ -12,6 +13,8 @@ from classes.person import Person
 from classes.msg_class import Message
 from classes.users_db_class import UsersDB
 import ssl
+import Antivirus
+import Gemini
 
 # GLOBAL CONSTANTS
 HOST = 'localhost'
@@ -111,6 +114,25 @@ def get_msg(client):
     msg_object = pickle.loads(raw)
     client.sendall(pickle.dumps('ACK'))
     print(msg_object)
+    scan_thread = Thread(target=scan_and_save, args=(msg_object,))
+    scan_thread.start()
+
+def scan_and_save(msg_object):
+    print("Scan thread")
+    report = ""
+
+    """links = Gemini.search_links(msg_object.info)
+    if not links.strip() == "":
+        links = links.split(',')
+        for link in links:
+            report += Antivirus.scan(link, 'link') + '\n'"""
+
+    if msg_object.data:
+        report += Antivirus.scan(msg_object.data, 'file') + '\n'
+
+    print(report)
+    if not report.strip() == "":
+        msg_object.scan_report = report
 
     lock.acquire()
     chat_db.insert_msg(msg_object)

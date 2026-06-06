@@ -1,6 +1,7 @@
 import time
 from logging import exception
 from mailbox import NoSuchMailboxError
+import pyperclip
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -211,8 +212,8 @@ class MSGWindow(QWidget): #TODO:add copy text option
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.scroll_widget)
 
-        self.setFixedHeight(500)
-        self.setFixedWidth(760)
+        self.setFixedHeight(700)
+        self.setFixedWidth(900)
 
         self.txt = message.__repr__()
 
@@ -225,23 +226,31 @@ class MSGWindow(QWidget): #TODO:add copy text option
                             border-radius: 5px;
                     """)
 
-        self.msg_block.setFixedWidth(750)
+        #self.msg_block.setFixedWidth(750)
         self.msg_block.setWordWrap(True)
         #self.msg_label.setFixedHeight(350)
         #self.msg_label.setFixedWidth(350)
 
-        self.file_block = QPushButton("Download file")
-        self.file_block.clicked.connect(self.save_file)
+        self.file_block_button = QPushButton("Download file")
+        self.file_block_button.clicked.connect(self.save_file)
+
+        self.copy_block_button = QPushButton("Copy mail text")
+        self.copy_block_button.clicked.connect(self.copy_mail_text)
+
+
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.scroll_area)
         self.setLayout(self.layout)
 
         self.message_trace.addWidget(self.msg_block)
+        self.message_trace.addWidget(self.copy_block_button)
         print(message.data)
         if message.data is not None:
-            print(8)
-            self.message_trace.addWidget(self.file_block)
+            self.message_trace.addWidget(self.file_block_button)
+
+    def copy_mail_text(self):
+        pyperclip.copy(self.txt)
 
     def save_file(self):
         file_explorer.saveFile(self.message.data, self.message.file_type)
@@ -649,7 +658,7 @@ def GUI():
     app = QApplication(sys.argv)
     #name = sys.argv[1]
     window = ChatMainWindow()
-    window.resize(750, 1000)
+    window.resize(900, 800)
     window.show()
     sys.exit(app.exec())
 

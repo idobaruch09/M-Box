@@ -5,7 +5,7 @@ virus_total_api_scan_file_url = "https://www.virustotal.com/api/v3/files"
 virus_total_api_scan_link_url = "https://www.virustotal.com/api/v3/urls"
 virus_total_api_key = ""
 with open("key.txt") as f:
-    virus_total_api_key = f.readlines()[1]
+    virus_total_api_key = f.readlines()[1].strip()
 
 def upload_link_for_scan(link):
     response = requests.post(url=virus_total_api_scan_link_url, headers={'x-apikey': virus_total_api_key}, data={'url':link})
@@ -29,7 +29,7 @@ def scan(to_scan, type): #TODO: change parameter for document in bytes and adjus
     suc = True
     data = {}
     while suc:
-        time.sleep(10)
+        time.sleep(5)
         result = requests.get(url=f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",headers=header)
         print(result.text)
         data = result.json()
@@ -38,7 +38,10 @@ def scan(to_scan, type): #TODO: change parameter for document in bytes and adjus
         print(status)
         if status == "completed":
             suc = False
-    print(data["data"]['attributes']["stats"])
+    if type == 'file':
+        return f'File: {data["data"]['attributes']["stats"]}'
+    elif type == 'link':
+        return f'{to_scan}: {data["data"]["attributes"]["stats"]}'
 
 
 
@@ -54,4 +57,4 @@ def upload_file_for_scan(file_bytes): #TODO: change parameter for document in by
   #  print(s)
    # scan_file(s)
 
-scan(virus_total_api_scan_file_url, "link")
+#scan(virus_total_api_scan_file_url, "link")

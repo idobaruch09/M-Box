@@ -52,7 +52,8 @@ class ChatDB:
                                 msg_text TEXT,
                                 to_mail TEXT,
                                 file_data TEXT,
-                                type TEXT
+                                type TEXT,
+                                scan_report TEXT
                                 )""")
         self.insert_name(table_name)
         print("added ", table_name)
@@ -74,9 +75,9 @@ class ChatDB:
                     file_data = msg.data
                 with self.conn:
                     self.cursor.execute(
-                        f"INSERT INTO {table_name} VALUES(:date,:from_mail,:msg_text, :to_mail,:file_data, :type)",
+                    f"INSERT INTO {table_name} VALUES(:date,:from_mail,:msg_text, :to_mail,:file_data, :type, :scan_report)",
                         {'date': msg.get_date(), 'from_mail': msg.get_name(), 'msg_text': msg.get_info(),
-                         'to_mail': msg.get_to(), 'file_data': file_data, 'type': msg.file_type})
+                         'to_mail': msg.get_to(), 'file_data': file_data, 'type': msg.file_type, 'scan_report': msg.scan_report})
 
 
     def get_history(self, to):
@@ -90,10 +91,11 @@ class ChatDB:
                 return msgs
             self.cursor.execute(f"SELECT * FROM {table_name}")
             fetched_data = self.cursor.fetchall()
-            for date, name, msg_text, recipients,data, file_type in fetched_data:
+            for date, name, msg_text, recipients, data, file_type, report in fetched_data:
                     m = Message(date, name, msg_text, recipients, data, file_type)
                     if data == '':
                         m.data = None
+                    m.scan_report = report
                     msgs.append(m)
         return msgs
 
