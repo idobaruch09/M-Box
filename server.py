@@ -307,7 +307,6 @@ if __name__ == "__main__":
     chat_db = ChatDB()
     global users_db
     users_db = UsersDB()
-    users_db.insert_new_user("a", "a", '2idobaruch@gmail.com')
     #wait_for_connection()
     SERVER.listen(MAX_CONNECTIONS) # open server to listen for connections
     print("[STARTED] waiting for connections...")
