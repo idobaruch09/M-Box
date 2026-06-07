@@ -14,7 +14,7 @@ def upload_link_for_scan(link):
     return response['data']['id']  # return analysis id
 
 
-def scan(to_scan, type): #TODO: change parameter for document in bytes and adjust func
+def scan(to_scan, type):
     print(f"Scanning {type}: ")
     if type == 'file':
         analysis_id = upload_file_for_scan(to_scan)
@@ -23,7 +23,6 @@ def scan(to_scan, type): #TODO: change parameter for document in bytes and adjus
     else:
         return "Unknown"
     print(f"File uploaded for scanning. Analysis ID: {analysis_id}")
-    # TODO: send http get request with the analysis id to get the scan results
 
     header = {'x-apikey': virus_total_api_key, "accept": "application/json"}
     suc = True
@@ -46,15 +45,9 @@ def scan(to_scan, type): #TODO: change parameter for document in bytes and adjus
 
 
 
-def upload_file_for_scan(file_bytes): #TODO: change parameter for document in bytes and adjust func
+def upload_file_for_scan(file_bytes):
     response = requests.post(url=virus_total_api_scan_file_url, headers={'x-apikey': virus_total_api_key}, files={'file': file_bytes})
     response = response.json()
     print(response)
     return response['data']['id'] # return analysis id
 
-#with open("chat.db", 'rb') as f:
- #   s = f.read()
-  #  print(s)
-   # scan_file(s)
-
-#scan(virus_total_api_scan_file_url, "link")

@@ -88,9 +88,6 @@ class ChatMainWindow(QMainWindow):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.scroll_widget)
 
-        # Save chat info button
-        self.save_button = QPushButton("Save Chat Info")
-        self.save_button.clicked.connect(self.save_chat_history)
 
         # Create a central widget
         central_widget = QWidget()
@@ -152,22 +149,6 @@ class ChatMainWindow(QMainWindow):
                                                 """)
             self.messages_trace.addWidget(block)
             print("finished")
-
-    def save_chat_history(self):
-        """
-        The function is called upon pressing the save_chat button.
-        The function calls get_all_widgets_from_layout function for capturing
-        all widgets from layout, finally it and saves the chat history in a file
-        """
-        
-        #-- Complete the function
-        filename = f"chat_history_{self.name}.txt"
-
-        with open(filename, "w", encoding="utf-8") as f:
-            for i in range(self.messages_trace.count()):
-                f.write(self.messages_trace.itemAt(i).widget().text() + "\n")
-
-        print("chat info has been successfully saved")
    
     def receive_new_message(self, new_message):
         """
@@ -212,8 +193,8 @@ class MSGWindow(QWidget): #TODO:add copy text option
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.scroll_widget)
 
-        self.setFixedHeight(700)
-        self.setFixedWidth(900)
+        self.setFixedHeight(400)
+        self.setFixedWidth(750)
 
         self.txt = message.__repr__()
 
@@ -375,13 +356,10 @@ class NewMessageWindow(QWidget):
         try:
             self.client.send_message(msg_object)
             print("chat message has been successfully sent")
-        except:
-            print("chat message could not be sent")
+        except Exception as e:
+            print("chat message could not be sent. ", e)
 
 
-        if text == 'EXIT':
-            exit(0)
-        # -- Complete the function
 
 class SignWindow(QMainWindow):  # need to be transferred to a new script
     """
@@ -664,5 +642,5 @@ def GUI():
 
 
 if __name__ == '__main__':
-    Thread(target=GUI).start()
+    GUI()
 

@@ -36,7 +36,7 @@ def send_TFA(recipient):
             smtp_server.login(sender, password)
             smtp_server.sendmail(sender, recipient, msg.as_string())
         print('Mail sent successfully')
-        return True, '1'
+        return True, code
     except Exception as e:
         print(e)
         return False, ""

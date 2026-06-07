@@ -1,6 +1,5 @@
 import pickle
 import threading
-from http.cookiejar import request_port
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Lock
 from threading import Thread
@@ -29,26 +28,13 @@ persons = []
 SERVER = socket(AF_INET, SOCK_STREAM)
 SERVER.bind(ADDR) # set up server
 
-# 1. הגדרת קונטקסט ה-TLS של השרת וטעינת התעודות
+
+#TLS context of the server and certificate
 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
 context.load_cert_chain(certfile="server.crt", keyfile="server.key")
 
 
 
-def broadcast(msg):
-    """
-    send new messages to all clients
-    :param msg: bytes["utf8"]
-    :param name: str
-    :return:
-    """
-    for p in persons:
-        print(p.mail)
-        print(msg.get_info())
-        client = p.client_socket
-        lock.acquire()
-        client.sendall(pickle.dumps(msg))
-        lock.release()
 
 def save_msg(msg):
     for p in persons:
@@ -139,12 +125,13 @@ def scan_and_save(msg_object):
     lock.release()
     save_msg(msg_object)
 
-
 def check_mail(mail):
     global users_db
     pattern = r'([a-z]|[A-Z]|[0-9])+@mb.com'  # required pattern
     result = re.match(pattern, mail)
+    lock.acquire()
     checked, auth = users_db.user_check(mail, '')
+    lock.release()
     if result and not checked and auth == 'DO NOT EXIST':
         return True
     else:
@@ -170,9 +157,10 @@ def new_user(client):
         password = pickle.loads(client.recv(BUFSIZ))
         client.sendall(pickle.dumps('ACK'))
         auth_mail = pickle.loads(client.recv(BUFSIZ))
-
+        lock.acquire()
         users_db.insert_new_user(mail, password, auth_mail)
-        print(chat_db.create_new_table(mail))
+        chat_db.create_new_table(mail)
+        lock.release()
 
         client.sendall(pickle.dumps('CREATED'))
     except Exception as e:
@@ -206,16 +194,19 @@ def client_setup(person):
     global users_db
 
     client = person.client_socket
+    try:
+        client.sendall(pickle.dumps('REQUEST'))  # waiting to know if the client wants to create a new user or log-in
+        response = pickle.loads(client.recv(BUFSIZ))
 
-    client.sendall(pickle.dumps('REQUEST')) #waiting to know if the client wants to create a new user or log-in
-    response = pickle.loads(client.recv(BUFSIZ))
-    if response == "NEW":
-        new_user(client)
-        try:
-            client.close()
-            return
-        except Exception as e:
-            print(e)
+        if response == "NEW":
+            new_user(client)
+            try:
+                client.close()
+                return
+            except Exception as e:
+                print(e)
+    except Exception as e:
+        print("[EXCEPTION]", e)
 
     # First message received is always the person's addr, then the password
     try:
@@ -230,7 +221,9 @@ def client_setup(person):
         print(e)
         return
 
+    lock.acquire()
     checked, auth = users_db.user_check(mail, password)
+    lock.release()
     if not checked:
         try:
             client.sendall(pickle.dumps('WRONG PASSWORD OR MAIL'))
@@ -266,16 +259,21 @@ def client_setup(person):
 
     person.set_mail(mail)
     persons.append(person)
-
     print(person.mail)
+    lock.acquire()
     history = chat_db.get_history(person.mail)
+    lock.release()
+    person.waiting_msgs = []
     person.waiting_msgs += history
 
-    response = pickle.loads(client.recv(BUFSIZ))  # TODO: add try
-    print(response)
-    if not (response == "READY"):
-        client.close()
-        return
+    try:
+        response = pickle.loads(client.recv(BUFSIZ))
+        print(response)
+        if not (response == "READY"):
+            client.close()
+            return
+    except Exception as e:
+        print('Exeption', e)
     client_loop(client, person)
 
 
@@ -296,9 +294,12 @@ def wait_for_connection():
             pass
         if client_socket:
             print("[CONNECTED]")
-            secure_client_socket = context.wrap_socket(client_socket, server_side=True)
-            p = Person(address, secure_client_socket)
-            threading.Thread(target=client_setup, args=(p,)).start()
+            try:
+                secure_client_socket = context.wrap_socket(client_socket, server_side=True)
+                p = Person(address, secure_client_socket)
+                threading.Thread(target=client_setup, args=(p,)).start()
+            except Exception as e:
+                print(e)
 
 
 
