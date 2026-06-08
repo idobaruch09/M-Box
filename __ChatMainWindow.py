@@ -30,7 +30,7 @@ class DisplayMessageSyncThread(QThread):
         # Emit a signal to update the GUI
         while True:
             self.event.wait()  # Blocks until the event is set
-            self.update_signal.emit()
+            self.update_signal.emit() # calling the function the signal connected to
             self.event.clear()  # Clear the event
 
 
@@ -170,9 +170,8 @@ class ChatMainWindow(QMainWindow):
             self.qu.put(new_message)
             self.event.set()  # Set the event, which unblocks the listener
             print(new_message)
-        #-- Complete the function
 
-class MSGWindow(QWidget): #TODO:add copy text option
+class MSGWindow(QWidget):
     """
     after clicking on incoming message this window will appear
     """
@@ -558,7 +557,7 @@ class NewUserWindow(QWidget):
 
          # Chat message input box with vertical scroll bar
         self.password_edit = QTextEdit()
-        self.password_edit.setPlaceholderText("Type here password(at least 8 characters is recommended)...")
+        self.password_edit.setPlaceholderText("Type here password(at least 8 characters is required)...")
         self.password_edit.setFixedHeight(30)
 
          # Chat message input box with vertical scroll bar
@@ -599,6 +598,10 @@ class NewUserWindow(QWidget):
         if auth.strip() == '' or mail.strip() == '' or password.strip() == '':
             self.notes_label.setText('All fields are required.')
             return
+        if len(password) < 8:
+            self.notes_label.setText('At least 8 password-characters are required.')
+            return
+
         response = client.new_user(mail, password, auth)
         print(response)
         self.notes_label.setText(response)
